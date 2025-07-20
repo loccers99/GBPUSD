@@ -59,11 +59,11 @@
             const marginRequired = notionalValue / leverage;
 
             document.getElementById('results').innerHTML = `
-                <p>Stop Price: <strong>${stopPrice.toFixed(2)}</strong></p>
-                <p>Limit Price: <strong>${limitPrice.toFixed(2)}</strong></p>
-                <p>Partial Take Profit Price: <strong>${partialTPPrice.toFixed(2)}</strong></p>
+                <p>Stop Price: <strong>${stopPrice.toFixed(5)}</strong></p>
+                <p>Limit Price: <strong>${limitPrice.toFixed(5)}</strong></p>
+                <p>Partial Take Profit Price: <strong>${partialTPPrice.toFixed(5)}</strong></p>
                 <p>Risk Amount: <strong>${riskAmount.toFixed(2)}</strong></p>
-                <p>Contract Size (units): <strong>${contractSize.toFixed(0)}</strong></p>
+                <p>Contract Size (units): <strong>${contractSize.toFixed(2)}</strong></p>
                 <p>Notional Value: <strong>${notionalValue.toFixed(2)}</strong></p>
                 <p>Margin Required (${leverage}x leverage): <strong>${marginRequired.toFixed(2)}</strong></p>
             `;
