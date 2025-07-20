@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GBPUSD Trade Calculator</title>
+    <title>GBPUSD 3.5 and 5.5 Trade Calculator</title>
 </head>
 <body>
-    <h2>GBPUSD Trade Calculator</h2>
+    <h2>GBPUSD 3.5 and 5.5 Trade Calculator</h2>
     <form id="tradeForm">
         <label>Entry Price: <input type="number" id="entryPrice" step="0.01" required></label><br><br>
         <label>ATR: <input type="number" id="atr" step="0.01" required></label><br><br>
