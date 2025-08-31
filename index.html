@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GBPUSD Trade Calculator — Split TP & Trailing</title>
+  <title>GBPUSD Trade Calculator — Split TP & Trailing and Fixed</title>
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.35;margin:24px;color:#111}
     h2{margin:0 0 12px}
@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-  <h2>GBPUSD Trade Calculator — Split TP & Trailing</h2>
+  <h2>GBPUSD Trade Calculator — 09:45 to 12:30 Split TP Fixed Stop</h2>
 
   <form id="tradeForm" onsubmit="event.preventDefault();calculateTrade();">
     <fieldset>
@@ -38,7 +38,7 @@
           <input type="number" id="accountBalance" step="0.01" required />
         </label>
         <label>Leverage (e.g. 30 for 30:1)
-          <input type="number" id="leverage" step="1" value="20" required />
+          <input type="number" id="leverage" step="1" value="30" required />
         </label>
         <label>Trade Direction
           <select id="tradeDirection">
@@ -57,10 +57,8 @@
         <label>Min Lot
           <input type="number" id="minLot" step="0.0001" value="0.01" />
         </label>
-        <label>Output Decimals (prices/ATR)
-          <input type="number" id="decimals" step="1" value="5" />
-        </label>
       </div>
+      <p class="muted">If your broker pays/charges $X per $1 move per 1 lot, set <b>Point Value</b> = X (default 1).</p>
     </fieldset>
 
     <fieldset>
@@ -88,13 +86,13 @@
       <legend>Stop & Targets (ATR multiples)</legend>
       <div class="row">
         <label>Stop Multiplier (SL × ATR) — reference only
-          <input type="number" id="slMult" step="0.1" value="1.5" />
+          <input type="number" id="slMult" step="0.1" value="1.6" />
         </label>
         <label>TP1 Multiplier (× ATR)
-          <input type="number" id="tp1Mult" step="0.1" value="1.1" />
+          <input type="number" id="tp1Mult" step="1.5" value="1.1" />
         </label>
         <label>TP2 Multiplier (× ATR)
-          <input type="number" id="tp2Mult" step="0.1" value="2.0" />
+          <input type="number" id="tp2Mult" step="2.0" value="2.0" />
         </label>
       </div>
     </fieldset>
@@ -111,6 +109,8 @@
         <label>Trail TP2 (offset × ATR)
           <input type="number" id="trail2Mult" step="0.1" value="1.2" />
         </label>
+      </div>
+      <div class="row">
         <label>Trailing Anchor
           <select id="trailAnchor">
             <option value="entry" selected>From entry (offset × ATR)</option>
@@ -118,6 +118,7 @@
           </select>
         </label>
       </div>
+      <p class="muted">Broker: place two trades by the split. Tick “Trailing” and enter each leg’s SL price shown below.</p>
     </fieldset>
 
     <div style="display:flex;gap:10px;align-items:center;margin:12px 0">
@@ -142,7 +143,12 @@
       if (scoreAbs >= 1)  return 0.5;
       return 0.5;
     }
-    function fmt(v, d){ return isFinite(v) ? v.toFixed(d) : "—"; }
+
+    // Formatting helpers
+    function fmt2(v){ return isFinite(v) ? v.toFixed(2) : "—"; }         // money, margin, risk
+    function fmt5(v){ return isFinite(v) ? v.toFixed(5) : "—"; }         // prices, ATR, price distances
+    function fmt0(v){ return isFinite(v) ? v.toFixed(0) : "—"; }         // integers
+    function fmtN(v,d){ return isFinite(v) ? v.toFixed(d) : "—"; }       // generic
 
     function calculateTrade() {
       const entryPrice     = parseFloat(document.getElementById('entryPrice').value);
@@ -154,7 +160,6 @@
       const pointValue = parseFloat(document.getElementById('pointValue').value || "1");
       const lotStep    = parseFloat(document.getElementById('lotStep').value   || "0.01");
       const minLot     = parseFloat(document.getElementById('minLot').value    || "0.01");
-      const decimals   = parseInt(document.getElementById('decimals').value) || 5;
 
       const slMult   = parseFloat(document.getElementById('slMult').value);
       const tp1Mult  = parseFloat(document.getElementById('tp1Mult').value);
@@ -163,76 +168,152 @@
       const tp1Percent = parseFloat(document.getElementById('tp1Percent').value);
       const trail1Mult = parseFloat(document.getElementById('trail1Mult').value);
       const trail2Mult = parseFloat(document.getElementById('trail2Mult').value);
-      const anchor     = document.getElementById('trailAnchor').value;
 
       const baseRiskPct   = parseFloat(document.getElementById('riskPct').value);
       const useScoreScale = document.getElementById('useScoreScale').value === "on";
       const score         = Math.abs(parseFloat(document.getElementById('score').value));
+      const anchor        = document.getElementById('trailAnchor').value; // 'entry' | 'static'
 
-      // Risk % (maybe scaled)
+      if ([entryPrice, atr, accountBalance, leverage].some(v => !isFinite(v) || v <= 0)){
+        document.getElementById('results').innerHTML = '<p class="bad">Please fill all required inputs with valid numbers > 0.</p>';
+        return;
+      }
+      if (tp1Percent <= 0 || tp1Percent >= 100){
+        document.getElementById('results').innerHTML = '<p class="bad">TP1 % must be between 1 and 99.</p>';
+        return;
+      }
+
+      // Risk % (optionally scaled)
       const riskPct = useScoreScale ? riskFromScore(baseRiskPct, score) : baseRiskPct;
       const riskAmountTotal = accountBalance * (riskPct / 100);
 
-      // Distances
-      const stopDist  = atr * slMult;
+      // Distances (price units)
+      const stopDist  = atr * slMult;          // static SL distance (reference and 'static' anchor)
       const tp1Dist   = atr * tp1Mult;
       const tp2Dist   = atr * tp2Mult;
-      const trail1Off = atr * trail1Mult;
-      const trail2Off = atr * trail2Mult;
+      const trail1Off = atr * trail1Mult;      // desired trailing gap L1 when 'entry' anchor
+      const trail2Off = atr * trail2Mult;      // desired trailing gap L2 when 'entry' anchor
 
+      // Direction
       const isLong = (tradeDirection === 'long');
+
+      // Targets
       const tp1Price = isLong ? (entryPrice + tp1Dist)  : (entryPrice - tp1Dist);
       const tp2Price = isLong ? (entryPrice + tp2Dist)  : (entryPrice - tp2Dist);
 
-      // Anchor
+      // Determine trailing gaps & SL prices to enter based on anchor
       let leg1Gap, leg2Gap, leg1SLprice, leg2SLprice;
       if (anchor === 'static') {
+        // Trail gap = static SL distance; SL to enter equals static SL
         leg1Gap    = stopDist;
         leg2Gap    = stopDist;
         leg1SLprice = isLong ? (entryPrice - stopDist) : (entryPrice + stopDist);
-        leg2SLprice = leg1SLprice;
+        leg2SLprice = leg1SLprice; // same gap both legs
       } else {
+        // From entry: trail gap = offset × ATR (per leg)
         leg1Gap    = trail1Off;
         leg2Gap    = trail2Off;
         leg1SLprice = isLong ? (entryPrice - trail1Off) : (entryPrice + trail1Off);
         leg2SLprice = isLong ? (entryPrice - trail2Off) : (entryPrice + trail2Off);
       }
+
+      // Reference static SL (shown only for context)
       const stopPriceRef = isLong ? (entryPrice - stopDist) : (entryPrice + stopDist);
 
-      // Sizing
-      const f = tp1Percent / 100;
+      // --- Size using trailing gaps actually used by anchor selection ---
+      const f = tp1Percent / 100; // split fraction for leg 1
       const riskDistCombined = (f * leg1Gap) + ((1 - f) * leg2Gap);
+
       const rawSize = (pointValue > 0 && riskDistCombined > 0)
         ? (riskAmountTotal / (pointValue * riskDistCombined))
         : 0;
       const sizeTotal = roundToStep(rawSize, lotStep, minLot);
 
+      // Split & rounding
       const sizeLeg1 = roundToStep(sizeTotal * f, lotStep, minLot);
       const sizeLeg2 = roundToStep(Math.max(sizeTotal - sizeLeg1, 0), lotStep, minLot);
 
+      // Risk per leg (based on each leg's trailing gap)
       const riskLeg1 = sizeLeg1 * pointValue * leg1Gap;
       const riskLeg2 = sizeLeg2 * pointValue * leg2Gap;
 
+      // Notional & margin (approx)
       const notional1 = sizeLeg1 * entryPrice;
       const notional2 = sizeLeg2 * entryPrice;
       const margin1   = leverage > 0 ? (notional1 / leverage) : 0;
       const margin2   = leverage > 0 ? (notional2 / leverage) : 0;
       const totalMargin = margin1 + margin2;
 
-      function f5(v){ return fmt(v, decimals); }
-
+      // Copyable broker ticket (prices/ATR to 5dp, money to 2dp)
       const ticket = [
-        `DIR: ${isLong ? 'LONG' : 'SHORT'} | Entry ${f5(entryPrice)} | ATR ${f5(atr)}`,
+        `DIR: ${isLong ? 'LONG' : 'SHORT'} | Entry ${fmt5(entryPrice)} | ATR ${fmt5(atr)}`,
         `Anchor: ${anchor === 'static' ? 'Static SL (SL×ATR)' : 'From Entry (offset×ATR)'}`,
-        `Size total ${fmt(sizeTotal,4)} lots | Risk ${fmt(riskAmountTotal,2)} (${fmt(riskPct,2)}%) | Margin ~ ${fmt(totalMargin,2)}`,
-        `Leg1 ${fmt(sizeLeg1,4)} lots | TP1 ${f5(tp1Price)} | SL (enter): ${f5(leg1SLprice)} | Gap: ${f5(leg1Gap)}`,
-        `Leg2 ${fmt(sizeLeg2,4)} lots | TP2 ${f5(tp2Price)} | SL (enter): ${f5(leg2SLprice)} | Gap: ${f5(leg2Gap)}`,
-        `(Ref) Static SL×ATR: ${f5(stopPriceRef)}`
+        `Size total ${fmtN(sizeTotal,4)} lots | Risk ${fmt2(riskAmountTotal)} (${fmt2(riskPct)}%) | Margin ~ ${fmt2(totalMargin)}`,
+        `Leg1 ${fmtN(sizeLeg1,4)} lots | TP1 ${fmt5(tp1Price)} | SL (enter): ${fmt5(leg1SLprice)} | Gap: ${fmt5(leg1Gap)}`,
+        `Leg2 ${fmtN(sizeLeg2,4)} lots | TP2 ${fmt5(tp2Price)} | SL (enter): ${fmt5(leg2SLprice)} | Gap: ${fmt5(leg2Gap)}`,
+        `(Ref) Static SL×ATR: ${fmt5(stopPriceRef)}`
       ].join('\n');
 
-      document.getElementById('results').innerHTML = `
-        <div class="card"><pre class="mono">${ticket}</pre></div>
+      // Render
+      const html = `
+        <div class="card">
+          <h3>Summary</h3>
+          <div class="row">
+            <div>
+              <p>Direction: <b>${isLong ? 'LONG' : 'SHORT'}</b></p>
+              <p>ATR: <b>${fmt5(atr)}</b></p>
+              <p>Risk: <b>${fmt2(riskAmountTotal)}</b> (${fmt2(riskPct)}%)</p>
+              <p>Total Size: <b class="mono">${fmtN(sizeTotal,4)}</b> lots</p>
+              <p>Total Margin (est.): <b>${fmt2(totalMargin)}</b></p>
+              <p class="muted">Anchor: ${anchor === 'static' ? 'Static SL distance (SL×ATR)' : 'From entry (offset×ATR)'}</p>
+            </div>
+            <div>
+              <p><b>Leg 1 — SL price (to enter):</b> <span class="mono">${fmt5(leg1SLprice)}</span> &nbsp; <span class="muted">(gap ${fmt5(leg1Gap)})</span></p>
+              <p><b>Leg 2 — SL price (to enter):</b> <span class="mono">${fmt5(leg2SLprice)}</span> &nbsp; <span class="muted">(gap ${fmt5(leg2Gap)})</span></p>
+              <p class="muted">(Ref) Static SL×ATR: <span class="mono">${fmt5(stopPriceRef)}</span></p>
+              <p>TP1: <b class="mono">${fmt5(tp1Price)}</b> &nbsp;|&nbsp; TP2: <b class="mono">${fmt5(tp2Price)}</b></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Leg 1 (TP1 ${fmt0(tp1Percent)}%)</h3>
+          <div class="row">
+            <div>
+              <p>Size: <b class="mono">${fmtN(sizeLeg1,4)}</b> lots</p>
+              <p>Risk (approx): <b>${fmt2(riskLeg1)}</b></p>
+              <p>Notional: <b>${fmt2(notional1)}</b></p>
+              <p>Margin @ ${fmt0(leverage)}×: <b>${fmt2(margin1)}</b></p>
+            </div>
+            <div>
+              <p>TP1 Price: <b class="mono">${fmt5(tp1Price)}</b></p>
+              <p><b>SL price (to enter):</b> <span class="mono">${fmt5(leg1SLprice)}</span> &nbsp; <span class="muted">(gap ${fmt5(leg1Gap)})</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Leg 2 (TP2 ${fmt0(100 - tp1Percent)}%)</h3>
+          <div class="row">
+            <div>
+              <p>Size: <b class="mono">${fmtN(sizeLeg2,4)}</b> lots</p>
+              <p>Risk (approx): <b>${fmt2(riskLeg2)}</b></p>
+              <p>Notional: <b>${fmt2(notional2)}</b></p>
+              <p>Margin @ ${fmt0(leverage)}×: <b>${fmt2(margin2)}</b></p>
+            </div>
+            <div>
+              <p>TP2 Price: <b class="mono">${fmt5(tp2Price)}</b></p>
+              <p><b>SL price (to enter):</b> <span class="mono">${fmt5(leg2SLprice)}</span> &nbsp; <span class="muted">(gap ${fmt5(leg2Gap)})</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Broker Ticket (copy/paste)</h3>
+          <pre class="mono">${ticket}</pre>
+        </div>
       `;
+      document.getElementById('results').innerHTML = html;
     }
 
     function copyResults(){
@@ -245,6 +326,7 @@
   </script>
 </body>
 </html>
+
 
 
 
