@@ -22,7 +22,7 @@
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
     fieldset{
       border:1px solid rgba(124,196,255,.18);
-      background:linear-gradient(180deg, rgba(124,196,255,.06), rgba(124,196,255,.03));
+      background:linear-gradient(180deg, rgba(124,196,255,.06), rgba(124,196,255,.03)); 
       border-radius:var(--br); padding:14px; margin:0;
     }
     legend{padding:0 8px;color:var(--muted);font-size:12px;letter-spacing:.2px}
@@ -110,7 +110,7 @@
         </label>
         <label>
           <span>Leverage</span>
-          <input id="leverage" type="number" step="1" value="20">
+          <input id="leverage" type="number" step="1" value="30">
         </label>
         <div class="hint">Defaults reflect majors: 1 pip = 0.0001; $/pip for 1 lot ≈ $10; contract 100,000 units.</div>
       </fieldset>
@@ -189,7 +189,7 @@
       const pipSize = toNum(els.pipSize.value, 0.0001);
       const contractSize = toNum(els.contractSize.value, 100000);
       const lotStep = toNum(els.lotStep.value, 0.01);
-      const leverage = toNum(els.leverage.value, 30);
+      const leverage = toNum(els.leverage.value, 20);
 
       const riskUsd = balance * (riskPct / 100);
       const pips = pipSize > 0 ? Math.abs(entry - sl) / pipSize : NaN;
