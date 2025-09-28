@@ -1,95 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>NASDAQ CFD TP/SL Calculator</title>
+  <meta charset="UTF-8" />
+  <title>NASDAQ 100 CFD TP/SL Calculator (up to 4 positions)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
-    h1 { text-align: center; }
-    label { display: block; margin-top: 10px; }
-    input { width: 150px; padding: 5px; margin-left: 10px; }
-    .result { background: #f0f0f0; padding: 10px; margin-top: 20px; border-radius: 6px; }
-    .row { margin-bottom: 10px; }
+    :root { --gap: 10px; }
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 20px; line-height: 1.4; }
+    h1 { text-align: center; margin-bottom: 6px; }
+    .sub { text-align: center; color: #666; margin-top: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--gap); }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+    label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+    input { width: 140px; padding: 6px; }
+    button { padding: 10px 14px; border-radius: 8px; border: 0; cursor: pointer; }
+    .primary { background: #1f6feb; color: #fff; }
+    .muted { background: #efefef; }
+    .actions { display: flex; gap: var(--gap); margin: 14px 0; flex-wrap: wrap; }
+    .result { background: #f7f7f7; padding: 14px; border-radius: 8px; }
+    .row { display: flex; justify-content: space-between; margin: 6px 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .hr { height: 1px; background: #e6e6e6; margin: 12px 0; }
+    small { color: #666; }
   </style>
 </head>
 <body>
   <h1>NASDAQ 100 CFD TP/SL Calculator</h1>
+  <p class="sub">Supports up to 4 positions (auto-ignores empty ones). Assumes long positions.</p>
 
-  <div>
-    <label>Account Balance: <input type="number" id="balance" value="1000"></label>
-    <label>Leverage: <input type="number" id="leverage" value="20"></label>
-    <label>Target Profit %: <input type="number" id="tpPct" value="10"></label>
-    <label>Stop Loss %: <input type="number" id="slPct" value="8"></label>
+  <div class="card">
+    <h3>Account & Targets</h3>
+    <div class="grid">
+      <label>Account Balance
+        <input type="number" id="balance" step="0.01" value="1000">
+      </label>
+      <label>Leverage (×)
+        <input type="number" id="leverage" step="1" value="20">
+      </label>
+      <label>Target Profit %
+        <input type="number" id="tpPct" step="0.01" value="10">
+      </label>
+      <label>Stop Loss %
+        <input type="number" id="slPct" step="0.01" value="8">
+      </label>
+    </div>
   </div>
 
-  <h3>Position 1</h3>
-  <div>
-    <label>Entry Price: <input type="number" id="p1" value="24511.26"></label>
-    <label>Margin: <input type="number" id="m1" value="333"></label>
+  <div class="grid" style="margin-top: 12px;">
+    <div class="card">
+      <h3>Position 1</h3>
+      <label>Entry Price
+        <input type="number" id="p1" step="0.01" value="24511.26">
+      </label>
+      <label>Margin
+        <input type="number" id="m1" step="0.01" value="333">
+      </label>
+    </div>
+
+    <div class="card">
+      <h3>Position 2</h3>
+      <label>Entry Price
+        <input type="number" id="p2" step="0.01" value="24389">
+      </label>
+      <label>Margin
+        <input type="number" id="m2" step="0.01" value="200">
+      </label>
+    </div>
+
+    <div class="card">
+      <h3>Position 3</h3>
+      <label>Entry Price
+        <input type="number" id="p3" step="0.01" placeholder="(optional)">
+      </label>
+      <label>Margin
+        <input type="number" id="m3" step="0.01" placeholder="(optional)">
+      </label>
+    </div>
+
+    <div class="card">
+      <h3>Position 4</h3>
+      <label>Entry Price
+        <input type="number" id="p4" step="0.01" placeholder="(optional)">
+      </label>
+      <label>Margin
+        <input type="number" id="m4" step="0.01" placeholder="(optional)">
+      </label>
+    </div>
   </div>
 
-  <h3>Position 2</h3>
-  <div>
-    <label>Entry Price: <input type="number" id="p2" value="24389"></label>
-    <label>Margin: <input type="number" id="m2" value="200"></label>
+  <div class="actions">
+    <button class="primary" onclick="calculate()">Calculate</button>
+    <button class="muted" onclick="resetOutputs()">Clear Results</button>
   </div>
 
-  <button onclick="calculate()">Calculate</button>
-
-  <div class="result" id="output"></div>
+  <div class="result" id="output">
+    <small>Enter your values, then click <b>Calculate</b>.</small>
+  </div>
 
   <script>
+    function toNum(id) {
+      const v = parseFloat(document.getElementById(id).value);
+      return isFinite(v) ? v : 0;
+    }
+
     function calculate() {
-      let B = parseFloat(document.getElementById("balance").value);
-      let L = parseFloat(document.getElementById("leverage").value);
-      let tpPct = parseFloat(document.getElementById("tpPct").value) / 100;
-      let slPct = parseFloat(document.getElementById("slPct").value) / 100;
+      const B = toNum("balance");
+      const L = toNum("leverage");
+      const tpPct = toNum("tpPct") / 100;
+      const slPct = toNum("slPct") / 100;
 
-      let P1 = parseFloat(document.getElementById("p1").value);
-      let M1 = parseFloat(document.getElementById("m1").value);
+      // Gather positions (up to 4)
+      const positions = [
+        { P: toNum("p1"), M: toNum("m1") },
+        { P: toNum("p2"), M: toNum("m2") },
+        { P: toNum("p3"), M: toNum("m3") },
+        { P: toNum("p4"), M: toNum("m4") },
+      ].filter(pos => pos.P > 0 && pos.M > 0 && L > 0);
 
-      let P2 = parseFloat(document.getElementById("p2").value);
-      let M2 = parseFloat(document.getElementById("m2").value);
-
-      // Exposure and contracts
-      let exp1 = M1 * L;
-      let exp2 = M2 * L;
-      let c1 = exp1 / P1;
-      let c2 = exp2 / P2;
-
-      let Ctot = c1 + c2;
-
-      if (Ctot === 0) {
-        document.getElementById("output").innerHTML = "No positions entered.";
+      if (positions.length === 0) {
+        document.getElementById("output").innerHTML = "<b>No valid positions.</b> Please fill Entry Price, Margin, and Leverage.";
         return;
       }
 
-      // Weighted average entry price
-      let Pavg = (P1 * c1 + P2 * c2) / Ctot;
+      // Exposure, contracts, totals
+      let Ctot = 0;
+      let weightedSum = 0;
+      let details = [];
 
-      // Targets in $
-      let TPdollar = B * tpPct;
-      let SLdollar = B * slPct;
+      positions.forEach((pos, idx) => {
+        const exposure = pos.M * L;
+        const contracts = exposure / pos.P; // $/pt = contracts
+        Ctot += contracts;
+        weightedSum += pos.P * contracts;
 
-      // Targets in points
-      let TPpoints = TPdollar / Ctot;
-      let SLpoints = SLdollar / Ctot;
+        details.push({
+          i: idx + 1,
+          P: pos.P,
+          M: pos.M,
+          exposure,
+          contracts
+        });
+      });
 
-      // Final Prices
-      let TPprice = Pavg + TPpoints;
-      let SLprice = Pavg - SLpoints;
+      if (Ctot <= 0) {
+        document.getElementById("output").innerHTML = "Total contracts is zero. Check inputs.";
+        return;
+      }
 
-      document.getElementById("output").innerHTML = `
-        <b>Results</b><br>
-        Weighted Avg Entry: ${Pavg.toFixed(2)}<br>
-        Total Contracts: ${Ctot.toFixed(4)}<br>
-        Point Value ($/pt): ${Ctot.toFixed(4)}<br>
-        Target Profit ($): ${TPdollar.toFixed(2)}<br>
-        Stop Loss ($): ${SLdollar.toFixed(2)}<br>
-        <hr>
-        Take Profit Price: <b>${TPprice.toFixed(2)}</b><br>
-        Stop Loss Price: <b>${SLprice.toFixed(2)}</b>
+      const Pavg = weightedSum / Ctot;
+      const TPdollar = B * tpPct;
+      const SLdollar = B * slPct;
+
+      const TPpoints = TPdollar / Ctot;
+      const SLpoints = SLdollar / Ctot;
+
+      const TPprice = Pavg + TPpoints;
+      const SLprice = Pavg - SLpoints;
+
+      // Render
+      const fmt2 = (x) => Number.isFinite(x) ? x.toFixed(2) : "-";
+      const fmt4 = (x) => Number.isFinite(x) ? x.toFixed(4) : "-";
+      const fmt6 = (x) => Number.isFinite(x) ? x.toFixed(6) : "-";
+
+      let html = `
+        <div class="row"><div><b>Weighted Avg Entry</b></div><div class="mono">${fmt2(Pavg)}</div></div>
+        <div class="row"><div><b>Total Contracts</b></div><div class="mono">${fmt6(Ctot)}</div></div>
+        <div class="row"><div><b>Point Value ($/pt)</b></div><div class="mono">${fmt6(Ctot)}</div></div>
+        <div class="row"><div>Target Profit ($)</div><div class="mono">${fmt2(TPdollar)}</div></div>
+        <div class="row"><div>Stop Loss ($)</div><div class="mono">${fmt2(SLdollar)}</div></div>
+        <div class="hr"></div>
+        <div class="row"><div><b>Take Profit Price</b></div><div class="mono"><b>${fmt2(TPprice)}</b></div></div>
+        <div class="row"><div><b>Stop Loss Price</b></div><div class="mono"><b>${fmt2(SLprice)}</b></div></div>
+        <div class="hr"></div>
+        <div><b>Position Breakdown</b></div>
       `;
+
+      details.forEach(d => {
+        html += `
+          <div class="row"><div>Pos ${d.i} Entry</div><div class="mono">${fmt2(d.P)}</div></div>
+          <div class="row"><div>Pos ${d.i} Margin</div><div class="mono">${fmt2(d.M)}</div></div>
+          <div class="row"><div>Pos ${d.i} Exposure</div><div class="mono">${fmt2(d.exposure)}</div></div>
+          <div class="row"><div>Pos ${d.i} Contracts</div><div class="mono">${fmt6(d.contracts)}</div></div>
+          <div class="hr"></div>
+        `;
+      });
+
+      html += `<small>Note: Assumes long positions and $1/pt per contract. For shorts, reverse the direction: TP below and SL above the weighted entry.</small>`;
+
+      document.getElementById("output").innerHTML = html;
+    }
+
+    function resetOutputs() {
+      document.getElementById("output").innerHTML = '<small>Results cleared. Enter your values, then click <b>Calculate</b>.</small>';
     }
   </script>
 </body>
