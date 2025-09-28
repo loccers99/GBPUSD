@@ -1,235 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GBPUSD FX Position Size Calculator</title>
+  <meta charset="UTF-8">
+  <title>NASDAQ CFD TP/SL Calculator</title>
   <style>
-    :root{
-      --bg:#0b0f14;--panel:#0f1520;--muted:#9aa4b2;--text:#e6eaf0;--accent:#7cc4ff;--ok:#6ee7b7;--warn:#fbbf24;--bad:#f87171;
-      --br:14px;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      color:var(--text); background: radial-gradient(1200px 800px at 80% -10%, #1e293b 0%, #0b0f14 40%) fixed;
-      padding:24px;
-    }
-    .wrap{max-width:980px; margin:0 auto;}
-    header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}
-    h1{margin:0;font-size:clamp(20px,3.4vw,30px);letter-spacing:.2px}
-    .badge{font-size:12px;color:#0b1220;background:var(--accent);padding:6px 10px;border-radius:999px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-    fieldset{
-      border:1px solid rgba(124,196,255,.18);
-      background:linear-gradient(180deg, rgba(124,196,255,.06), rgba(124,196,255,.03)); 
-      border-radius:var(--br); padding:14px; margin:0;
-    }
-    legend{padding:0 8px;color:var(--muted);font-size:12px;letter-spacing:.2px}
-    label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;color:var(--muted);font-size:14px}
-    input[type="number"]{
-      width:160px; padding:8px 10px; border-radius:10px; border:1px solid rgba(124,196,255,.25);
-      background:#0b1220; color:var(--text);
-    }
-    .hint{font-size:12px;color:var(--muted);margin-top:6px}
-    .out{
-      display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px
-    }
-    .card{
-      padding:14px;border:1px solid rgba(124,196,255,.18);
-      background:linear-gradient(180deg, rgba(124,196,255,.06), rgba(124,196,255,.03));
-      border-radius:var(--br);
-    }
-    .k{font-size:12px;color:var(--muted)}
-    .v{font-size:22px;margin-top:2px}
-    .v.ok{color:var(--ok)} .v.warn{color:var(--warn)} .v.bad{color:var(--bad)}
-    .rr{display:flex;gap:10px;align-items:center}
-    .small{font-size:12px;color:var(--muted)}
-    footer{margin-top:22px;color:var(--muted);font-size:12px}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
-    button{
-      border:none;background:var(--accent);color:#001428;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer
-    }
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+    h1 { text-align: center; }
+    label { display: block; margin-top: 10px; }
+    input { width: 150px; padding: 5px; margin-left: 10px; }
+    .result { background: #f0f0f0; padding: 10px; margin-top: 20px; border-radius: 6px; }
+    .row { margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>GBPUSD — Position Size Calculator</h1>
-      <span class="badge">v1.0 (FX)</span>
-    </header>
+  <h1>NASDAQ 100 CFD TP/SL Calculator</h1>
 
-    <div class="grid">
-      <fieldset>
-        <legend>Account &amp; Risk</legend>
-        <label>
-          <span>Account Balance (USD)</span>
-          <input id="balance" type="number" step="0.01" value="1000">
-        </label>
-        <label>
-          <span>Risk % of Balance</span>
-          <input id="riskPct" type="number" step="0.1" value="1.0">
-        </label>
-        <div class="hint">Risk $ = Balance × (Risk % / 100).</div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Trade Prices</legend>
-        <label>
-          <span>Entry Price</span>
-          <input id="entry" type="number" step="0.00001" value="1.27000">
-        </label>
-        <label>
-          <span>Stop-Loss Price</span>
-          <input id="sl" type="number" step="0.00001" value="1.26500">
-        </label>
-        <label>
-          <span>Take-Profit Price (optional)</span>
-          <input id="tp" type="number" step="0.00001" value="1.28000">
-        </label>
-        <div class="hint">Direction inferred: SL &lt; Entry → long, SL &gt; Entry → short.</div>
-      </fieldset>
-
-      <fieldset>
-        <legend>FX Contract Settings</legend>
-        <label>
-          <span>$ per Pip (1.00 lot)</span>
-          <input id="usdPerPip" type="number" step="0.01" value="10.00">
-        </label>
-        <label>
-          <span>Pip Size</span>
-          <input id="pipSize" type="number" step="0.00001" value="0.0001">
-        </label>
-        <label>
-          <span>Contract Size (units per 1.00 lot)</span>
-          <input id="contractSize" type="number" step="1" value="100000">
-        </label>
-        <label>
-          <span>Min Lot Step</span>
-          <input id="lotStep" type="number" step="0.0001" value="0.00001">
-        </label>
-        <label>
-          <span>Leverage</span>
-          <input id="leverage" type="number" step="1" value="30">
-        </label>
-        <div class="hint">Defaults reflect majors: 1 pip = 0.0001; $/pip for 1 lot ≈ $10; contract 100,000 units.</div>
-      </fieldset>
-    </div>
-
-    <div class="out">
-      <div class="card">
-        <div class="k">Risk ($)</div>
-        <div id="riskUsd" class="v"></div>
-      </div>
-      <div class="card">
-        <div class="k">Stop Distance (pips)</div>
-        <div id="stopPips" class="v"></div>
-      </div>
-      <div class="card">
-        <div class="k">Position Size (lots)</div>
-        <div id="lots" class="v ok"></div>
-      </div>
-      <div class="card">
-        <div class="k">Notional Exposure (approx.)</div>
-        <div id="notional" class="v"></div>
-        <div class="small">= Entry × (lots × contract size)</div>
-      </div>
-      <div class="card">
-        <div class="k">Margin Required</div>
-        <div id="margin" class="v warn"></div>
-        <div class="small">= Notional ÷ Leverage</div>
-      </div>
-      <div class="card">
-        <div class="k">R:R (optional)</div>
-        <div class="v rr"><span id="rr">—</span></div>
-      </div>
-    </div>
-
-    <footer>
-      <div>Formulas:</div>
-      <div class="mono">pips = |entry − SL| ÷ pipSize</div>
-      <div class="mono">lots = riskUSD ÷ (pips × $/pip for 1.00 lot)</div>
-      <div class="mono">notional ≈ entry × (lots × contractSize)</div>
-      <div class="mono">margin = notional ÷ leverage</div>
-      <div class="hint" style="margin-top:8px">Check your broker specs for $/pip, lot step, and leverage limits.</div>
-    </footer>
+  <div>
+    <label>Account Balance: <input type="number" id="balance" value="1000"></label>
+    <label>Leverage: <input type="number" id="leverage" value="20"></label>
+    <label>Target Profit %: <input type="number" id="tpPct" value="10"></label>
+    <label>Stop Loss %: <input type="number" id="slPct" value="8"></label>
   </div>
 
+  <h3>Position 1</h3>
+  <div>
+    <label>Entry Price: <input type="number" id="p1" value="24511.26"></label>
+    <label>Margin: <input type="number" id="m1" value="333"></label>
+  </div>
+
+  <h3>Position 2</h3>
+  <div>
+    <label>Entry Price: <input type="number" id="p2" value="24389"></label>
+    <label>Margin: <input type="number" id="m2" value="200"></label>
+  </div>
+
+  <button onclick="calculate()">Calculate</button>
+
+  <div class="result" id="output"></div>
+
   <script>
-    const els = {
-      balance: document.getElementById('balance'),
-      riskPct: document.getElementById('riskPct'),
-      entry: document.getElementById('entry'),
-      sl: document.getElementById('sl'),
-      tp: document.getElementById('tp'),
-      usdPerPip: document.getElementById('usdPerPip'),
-      pipSize: document.getElementById('pipSize'),
-      contractSize: document.getElementById('contractSize'),
-      lotStep: document.getElementById('lotStep'),
-      leverage: document.getElementById('leverage'),
-      riskUsd: document.getElementById('riskUsd'),
-      stopPips: document.getElementById('stopPips'),
-      lots: document.getElementById('lots'),
-      notional: document.getElementById('notional'),
-      margin: document.getElementById('margin'),
-      rr: document.getElementById('rr'),
-    };
+    function calculate() {
+      let B = parseFloat(document.getElementById("balance").value);
+      let L = parseFloat(document.getElementById("leverage").value);
+      let tpPct = parseFloat(document.getElementById("tpPct").value) / 100;
+      let slPct = parseFloat(document.getElementById("slPct").value) / 100;
 
-    function toNum(v, def=0){ const n = parseFloat(v); return isFinite(n) ? n : def; }
-    function roundToStep(value, step){ return step > 0 ? Math.round(value/step)*step : value; }
-    function fmt(n, dp=2){ return isFinite(n) ? n.toLocaleString(undefined,{minimumFractionDigits:dp,maximumFractionDigits:dp}) : "—"; }
+      let P1 = parseFloat(document.getElementById("p1").value);
+      let M1 = parseFloat(document.getElementById("m1").value);
 
-    function calc(){
-      const balance = toNum(els.balance.value, 0);
-      const riskPct = toNum(els.riskPct.value, 0);
-      const entry = toNum(els.entry.value, 0);
-      const sl = toNum(els.sl.value, 0);
-      const tp = toNum(els.tp.value, NaN);
-      const usdPerPip = toNum(els.usdPerPip.value, 10);
-      const pipSize = toNum(els.pipSize.value, 0.0001);
-      const contractSize = toNum(els.contractSize.value, 100000);
-      const lotStep = toNum(els.lotStep.value, 0.01);
-      const leverage = toNum(els.leverage.value, 20);
+      let P2 = parseFloat(document.getElementById("p2").value);
+      let M2 = parseFloat(document.getElementById("m2").value);
 
-      const riskUsd = balance * (riskPct / 100);
-      const pips = pipSize > 0 ? Math.abs(entry - sl) / pipSize : NaN;
+      // Exposure and contracts
+      let exp1 = M1 * L;
+      let exp2 = M2 * L;
+      let c1 = exp1 / P1;
+      let c2 = exp2 / P2;
 
-      // lots from $ risk and $/pip
-      let lotsRaw = (isFinite(pips) && usdPerPip > 0) ? (riskUsd / (pips * usdPerPip)) : 0;
-      let lots = roundToStep(lotsRaw, lotStep);
+      let Ctot = c1 + c2;
 
-      // notional ≈ entry × (lots × contractSize)  (USD value because quote is USD)
-      const units = lots * contractSize;
-      const notional = entry * units;
-
-      const margin = leverage > 0 ? notional / leverage : NaN;
-
-      // R:R using TP if provided
-      let rrTxt = "—";
-      if (isFinite(tp)){
-        const risk = Math.abs(entry - sl);
-        const reward = Math.abs(tp - entry);
-        if (risk > 0){ rrTxt = (reward / risk).toFixed(2) + " : 1"; }
+      if (Ctot === 0) {
+        document.getElementById("output").innerHTML = "No positions entered.";
+        return;
       }
 
-      els.riskUsd.textContent = "$ " + fmt(riskUsd,2);
-      els.stopPips.textContent = isFinite(pips) ? fmt(pips,1) : "—";
-      els.lots.textContent = fmt(lots,5);
-      els.notional.textContent = "$ " + fmt(notional,2);
-      els.margin.textContent = "$ " + fmt(margin,2);
-      els.rr.textContent = rrTxt;
+      // Weighted average entry price
+      let Pavg = (P1 * c1 + P2 * c2) / Ctot;
+
+      // Targets in $
+      let TPdollar = B * tpPct;
+      let SLdollar = B * slPct;
+
+      // Targets in points
+      let TPpoints = TPdollar / Ctot;
+      let SLpoints = SLdollar / Ctot;
+
+      // Final Prices
+      let TPprice = Pavg + TPpoints;
+      let SLprice = Pavg - SLpoints;
+
+      document.getElementById("output").innerHTML = `
+        <b>Results</b><br>
+        Weighted Avg Entry: ${Pavg.toFixed(2)}<br>
+        Total Contracts: ${Ctot.toFixed(4)}<br>
+        Point Value ($/pt): ${Ctot.toFixed(4)}<br>
+        Target Profit ($): ${TPdollar.toFixed(2)}<br>
+        Stop Loss ($): ${SLdollar.toFixed(2)}<br>
+        <hr>
+        Take Profit Price: <b>${TPprice.toFixed(2)}</b><br>
+        Stop Loss Price: <b>${SLprice.toFixed(2)}</b>
+      `;
     }
-
-    ["input","change"].forEach(ev=>{
-      Object.values(els).forEach(el=>{
-        if (el && el.tagName==="INPUT"){ el.addEventListener(ev,calc); }
-      });
-    });
-
-    calc();
   </script>
 </body>
 </html>
+
 
 
 
